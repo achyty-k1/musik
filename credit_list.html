@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список кредитов</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .credit-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .credit-card {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Список кредитов</h1>
+        <div id="creditList" class="credit-list"></div>
+        <button onclick="window.location.href='./interaction.html'">Назад</button>
+        <button onclick="addCredit()">Добавить кредит</button>
+    </div>
+
+    <script>
+        const client = JSON.parse(localStorage.getItem('currentClient')) || {credits: []};
+        let clients = JSON.parse(localStorage.getItem('clients')) || [];
+
+        function saveClientData() {
+            const updatedClients = clients.map(c =>
+                c.accountNumber === client.accountNumber ? client : c
+            );
+            localStorage.setItem('clients', JSON.stringify(updatedClients));
+            localStorage.setItem('currentClient', JSON.stringify(client));
+        }
+
+        function displayCredits() {
+            const creditListElement = document.getElementById('creditList');
+            creditListElement.innerHTML = '';
+            client.credits.forEach((credit, index) => {
+                const totalAmount = credit.amount + (credit.amount * credit.interestRate / 100);
+                const startTime = credit.startTime || Date.now();
+                const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                const remainingTime = Math.max(credit.term * 60 - elapsedTime, 0);
+                credit.startTime = startTime;
+
+                creditListElement.innerHTML += `
+                    <div class="credit-card">
+                        <p><strong>Кредит ${index + 1}</strong></p>
+                        <p>Сумма: ${credit.amount.toFixed(2)}</p>
+                        <p>Процент: ${credit.interestRate}%</p>
+                        <p>Итоговая сумма с процентами: ${totalAmount.toFixed(2)}</p>
+                        <p>Срок: ${credit.term} мин</p>
+                        <p>Просрочки: ${credit.overdue}/2</p>
+                        <p>Таймер: <span id="timer${index}">Ожидание...</span></p>
+                        <button onclick="makeEarlyPayment(${index})">Внести досрочную сумму</button>
+                        <button onclick="deleteCredit(${index})">Полное удаление</button>
+                    </div>`;
+                startTimer(index, remainingTime);
+            });
+            saveClientData();
+        }
+
+        function startTimer(index, seconds) {
+            const timerElement = document.getElementById(`timer${index}`);
+
+            const interval = setInterval(() => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                timerElement.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                seconds--;
+
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    alert(`Кредит ${index + 1} просрочен!`);
+                    client.credits[index].overdue++;
+                    if (client.credits[index].overdue >= 2) {
+                        timerElement.textContent = 'Остановлен';
+                    } else {
+                        client.credits[index].totalAmount += client.credits[index].amount * (client.credits[index].interestRate / 100);
+                        saveClientData();
+                        displayCredits();
+                    }
+                }
+            }, 1000);
+        }
+
+        function addCredit() {
+            const amount = parseFloat(prompt('Введите сумму кредита:'));
+            const interestRate = parseFloat(prompt('Введите процент по кредиту:'));
+            const term = parseInt(prompt('Введите срок кредита в минутах (15-30):'));
+
+            if (isNaN(amount) || isNaN(interestRate) || isNaN(term) || term < 15 || term > 30) {
+                alert('Некорректные данные. Введите правильные значения.');
+                return;
+            }
+
+            const newCredit = {
+                amount,
+                interestRate,
+                totalAmount: amount + (amount * interestRate / 100),
+                term,
+                overdue: 0,
+                startTime: Date.now()
+            };
+
+            client.credits.push(newCredit);
+            saveClientData();
+            displayCredits();
+            startTimer(client.credits.length - 1, term * 60);
+        }
+
+        function makeEarlyPayment(index) {
+            const payment = parseFloat(prompt('Введите сумму досрочного платежа:'));
+            if (!isNaN(payment) && payment > 0) {
+                client.credits[index].amount -= payment;
+                saveClientData();
+                displayCredits();
+            } else {
+                alert('Некорректная сумма.');
+            }
+        }
+
+        function deleteCredit(index) {
+            if (confirm('Вы уверены, что хотите удалить этот кредит?')) {
+                client.credits.splice(index, 1);
+                saveClientData();
+                displayCredits();
+            }
+        }
+
+        displayCredits();
+    </script>
+</body>
+</html>

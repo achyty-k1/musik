@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список клиентов</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .client-card {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Список клиентов</h1>
+        <div id="clientList"></div>
+        <button onclick="window.location.href='index.html'">Назад</button>
+    </div>
+
+    <script>
+        const clients = JSON.parse(localStorage.getItem('clients')) || [];
+
+        function displayClients() {
+            const clientListElement = document.getElementById('clientList');
+            clientListElement.innerHTML = '';
+
+            clients.forEach((client, index) => {
+                const clientCard = document.createElement('div');
+                clientCard.classList.add('client-card');
+
+                clientCard.innerHTML = `
+                    <p><strong>Имя:</strong> ${client.name}</p>
+                    <p><strong>Номер счёта:</strong> ${client.accountNumber}</p>
+                    <button onclick="interactWithClient(${index})">Взаимодействовать</button>
+                `;
+                clientListElement.appendChild(clientCard);
+            });
+        }
+
+        function interactWithClient(index) {
+            if (clients[index]) {
+                localStorage.setItem('currentClient', JSON.stringify(clients[index]));
+                window.location.href = 'interaction.html';
+            } else {
+                alert('Клиент не найден!');
+            }
+        }
+
+        displayClients();
+    </script>
+</body>
+</html>

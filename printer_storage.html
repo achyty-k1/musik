@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Хранение принтеров</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .printer-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .printer-card {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Хранение принтеров</h1>
+        <button onclick="window.location.href='interaction.html'">Назад</button>
+        <button onclick="addPrinter()">Добавить принтер</button>
+        <div id="printerList" class="printer-container"></div>
+    </div>
+
+    <script>
+        let printers = JSON.parse(localStorage.getItem('printers')) || [];
+        const printerTypes = ["Базовый", "Обычный", "Продвинутый", "Премиум"];
+
+        function addPrinter() {
+            let printerOptions = printerTypes.map((type, index) => `${index + 1}. ${type}`).join('\n');
+            const choice = parseInt(prompt(`Выберите принтер по номеру:\n${printerOptions}`)) - 1;
+
+            if (choice < 0 || choice >= printerTypes.length) {
+                alert('Некорректный выбор принтера.');
+                return;
+            }
+
+            const cost = parseFloat(prompt('Введите стоимость принтера:'));
+            if (isNaN(cost) || cost <= 0) {
+                alert('Некорректная стоимость.');
+                return;
+            }
+
+            const newPrinter = {
+                name: printerTypes[choice],
+                cost: cost,
+                startTime: Date.now(),
+                frozen: false
+            };
+
+            printers.push(newPrinter);
+            localStorage.setItem('printers', JSON.stringify(printers));
+            displayPrinters();
+        }
+
+        function displayPrinters() {
+            const printerListElement = document.getElementById('printerList');
+            printerListElement.innerHTML = '';
+
+            printers.forEach((printer, index) => {
+                printerListElement.innerHTML += `
+                    <div class="printer-card">
+                        <p><strong>Принтер №${index + 1}</strong></p>
+                        <p><strong>Название:</strong> ${printer.name}</p>
+                        <p><strong>Стоимость:</strong> ${printer.cost}</p>
+                        <p><strong>Время в хранении:</strong> <span id="timer${index}">${formatTime(calculateElapsedTime(printer.startTime))}</span></p>
+                        <button onclick="deletePrinter(${index})">Удалить принтер</button>
+                        <button onclick="freezePrinter(${index})">${printer.frozen ? 'Разморозить' : 'Заморозить'}</button>
+                    </div>`;
+            });
+
+            startAllTimers();
+        }
+
+        function startAllTimers() {
+            printers.forEach((printer, index) => {
+                if (!printer.frozen) {
+                    setInterval(() => {
+                        if (!printers[index].frozen) {
+                            const timerElement = document.getElementById(`timer${index}`);
+                            timerElement.textContent = formatTime(calculateElapsedTime(printers[index].startTime));
+                        }
+                    }, 1000);
+                }
+            });
+        }
+
+        function calculateElapsedTime(startTime) {
+            return Math.floor((Date.now() - startTime) / 1000);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function deletePrinter(index) {
+            if (confirm('Вы уверены, что хотите удалить принтер?')) {
+                printers.splice(index, 1);
+                localStorage.setItem('printers', JSON.stringify(printers));
+                displayPrinters();
+            }
+        }
+
+        function freezePrinter(index) {
+            printers[index].frozen = !printers[index].frozen;
+            localStorage.setItem('printers', JSON.stringify(printers));
+            displayPrinters();
+        }
+
+        displayPrinters();
+    </script>
+</body>
+</html>

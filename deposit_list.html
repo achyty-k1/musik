@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список депозитов</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .deposit-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .deposit-card {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Список депозитов</h1>
+        <div id="depositList" class="deposit-container"></div>
+        <button onclick="window.location.href='interaction.html'">Назад</button>
+        <button onclick="addDeposit()">Добавить депозит</button>
+    </div>
+
+    <script>
+        let deposits = JSON.parse(localStorage.getItem('deposits')) || [];
+
+        function addDeposit() {
+            const amount = parseFloat(prompt('Введите сумму депозита:'));
+            const interestRate = parseFloat(prompt('Введите процентную ставку:'));
+            if (isNaN(amount) || isNaN(interestRate) || amount <= 0 || interestRate <= 0) {
+                alert('Некорректные данные. Попробуйте снова.');
+                return;
+            }
+            const newDeposit = {
+                amount: amount,
+                interestRate: interestRate,
+                totalEarnings: 0,
+                interestCounter: 0,
+                frozen: false,
+                startTime: Date.now()
+            };
+            deposits.push(newDeposit);
+            localStorage.setItem('deposits', JSON.stringify(deposits));
+            displayDeposits();
+        }
+
+        function displayDeposits() {
+            const depositListElement = document.getElementById('depositList');
+            depositListElement.innerHTML = '';
+
+            deposits.forEach((deposit, index) => {
+                const elapsedTime = Math.floor((Date.now() - deposit.startTime) / 1000);
+                const remainingTime = Math.max(1800 - elapsedTime, 0);
+
+                depositListElement.innerHTML += `
+                    <div class="deposit-card">
+                        <p><strong>Изначальная сумма:</strong> ${deposit.amount.toFixed(2)}</p>
+                        <p><strong>Процентная ставка:</strong> ${deposit.interestRate}%</p>
+                        <p><strong>Итоговый заработок:</strong> ${deposit.totalEarnings.toFixed(2)}</p>
+                        <p><strong>Процент начислялся:</strong> ${deposit.interestCounter} раз</p>
+                        <p><strong>Таймер:</strong> <span id="timer${index}">${formatTime(remainingTime)}</span></p>
+                        <button onclick="withdrawDeposit(${index})">Вывести</button>
+                        <button onclick="deleteDeposit(${index})">Удалить депозит</button>
+                        <button onclick="freezeDeposit(${index})">${deposit.frozen ? 'Разморозить' : 'Заморозить'}</button>
+                    </div>`;
+
+                if (!deposit.frozen) {
+                    startTimer(index, remainingTime);
+                }
+            });
+        }
+
+        function startTimer(index, seconds) {
+            const timerElement = document.getElementById(`timer${index}`);
+
+            const interval = setInterval(() => {
+                if (deposits[index].frozen) {
+                    clearInterval(interval);
+                    timerElement.textContent = 'Заморожен';
+                    return;
+                }
+
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    alert(`Процент добавлен к депозиту ${index + 1}`);
+                    deposits[index].totalEarnings += deposits[index].amount * (deposits[index].interestRate / 100);
+                    deposits[index].interestCounter++;
+                    deposits[index].startTime = Date.now();
+                    localStorage.setItem('deposits', JSON.stringify(deposits));
+                    displayDeposits();
+                    return;
+                }
+
+                timerElement.textContent = formatTime(seconds);
+                seconds--;
+            }, 1000);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function withdrawDeposit(index) {
+            alert(`Выведено: ${deposits[index].totalEarnings.toFixed(2)}`);
+            deposits.splice(index, 1);
+            localStorage.setItem('deposits', JSON.stringify(deposits));
+            displayDeposits();
+        }
+
+        function deleteDeposit(index) {
+            if (confirm('Вы уверены, что хотите удалить депозит?')) {
+                deposits.splice(index, 1);
+                localStorage.setItem('deposits', JSON.stringify(deposits));
+                displayDeposits();
+            }
+        }
+
+        function freezeDeposit(index) {
+            deposits[index].frozen = !deposits[index].frozen;
+            localStorage.setItem('deposits', JSON.stringify(deposits));
+            displayDeposits();
+        }
+
+        displayDeposits();
+    </script>
+</body>
+</html>
